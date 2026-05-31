@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>晚餐隨機生成器 🎰 吃什麼好呢？</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & ZCOOL KuaiLe (for playful Chinese titles) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0f172a;
+        }
+        .title-font {
+            font-family: 'ZCOOL KuaiLe', 'Inter', cursive, sans-serif;
+        }
+        
+        /* Neon glowing text & shadows */
+        .neon-border {
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.6), inset 0 0 15px rgba(244, 63, 94, 0.3);
+        }
+        .neon-border-green {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.6), inset 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+        .neon-text {
+            text-shadow: 0 0 10px rgba(244, 63, 94, 0.8), 0 0 20px rgba(244, 63, 94, 0.4);
+        }
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+        }
+
+        /* Pull-down lever animations */
+        .lever-ball {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .lever-bar {
+            transform-origin: bottom center;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* Slots styles */
+        .reel-container {
+            height: 240px; /* Show exactly 2 items clearly or 1 item centered with partials */
+            perspective: 1000px;
+        }
+        .reel-viewport {
+            height: 120px; /* One item viewport size */
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f43f5e;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col items-center justify-between py-6 px-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 overflow-x-hidden">
+
+    <!-- Top Header -->
+    <header class="text-center w-full max-w-4xl mb-6">
+        <div class="inline-flex items-center gap-3 bg-slate-900/80 border border-pink-500/30 px-6 py-2 rounded-full mb-3 shadow-lg backdrop-blur-md">
+            <span class="flex h-3 w-3 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span>
+            </span>
+            <p class="text-xs md:text-sm tracking-widest text-pink-400 font-bold uppercase">Today's Dinner Randomizer</p>
+        </div>
+        <h1 class="text-4xl md:text-6xl font-extrabold title-font text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-rose-400 to-amber-400 leading-tight tracking-wider py-1">
+            晚餐隨機生成器 🎰
+        </h1>
+        <p class="text-sm md:text-base text-slate-400 mt-2">
+            主食、湯品、甜點一鍵搞定！告別選擇困難症 😋
+        </p>
+    </header>
+
+    <!-- Main Container: Machine + Sidebar Edit -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start my-auto">
+        
+        <!-- Left / Center: The Slot Machine -->
+        <div class="lg:col-span-8 flex flex-col items-center justify-center w-full">
+            
+            <!-- Physical Machine Frame -->
+            <div class="relative w-full max-w-2xl bg-slate-900 border-4 border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl neon-border flex flex-col gap-6">
+                
+                <!-- Machine Status / Marquee Board -->
+                <div class="bg-black border-2 border-slate-800 rounded-xl p-3 text-center overflow-hidden relative">
+                    <div class="absolute inset-0 bg-gradient-to-r from-pink-500/5 via-transparent to-pink-500/5 pointer-events-none"></div>
+                    <div class="text-xs tracking-wider text-pink-400 font-mono flex justify-center gap-1.5" id="marquee-text">
+                        <span>✨ LET'S SPIN YOUR LUCK! ✨</span>
+                    </div>
+                </div>
+
+                <!-- Three Slots Reels Deck -->
+                <div class="grid grid-cols-3 gap-3 md:gap-5 relative bg-slate-950 p-4 rounded-2xl border-2 border-slate-800/80 shadow-inner">
+                    
+                    <!-- Vertical highlight indicator lines -->
+                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[96px] border-y-2 border-dashed border-amber-500/40 bg-amber-500/5 pointer-events-none z-10"></div>
+                    
+                    <!-- Reel 1: Main Dish (主食) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest flex items-center gap-1">
+                            <i class="fa-solid font-bold text-rose-500 fa-bowl-food"></i> 主食
+                        </span>
+                        
+                        <!-- Lock & Spin Container -->
+                        <div class="relative w-full bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg flex flex-col items-center">
+                            <!-- Reel viewport -->
+                            <div class="w-full h-[120px] overflow-hidden relative select-none" id="reel-viewport-0">
+                                <div class="absolute w-full transition-transform duration-75 ease-out flex flex-col" id="reel-track-0" style="transform: translateY(-120px);">
+                                    <!-- Dynamic elements will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Lock Toggle Pin -->
+                            <button onclick="toggleLock(0)" id="lock-btn-0" class="absolute top-2 right-2 z-20 bg-slate-950/80 hover:bg-slate-950 text-slate-400 border border-slate-700 hover:border-pink-500 p-1.5 rounded-lg text-xs transition duration-200">
+                                <i class="fa-solid fa-lock-open" id="lock-icon-0"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reel 2: Soup (湯品) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest flex items-center gap-1">
+                            <i class="fa-solid text-cyan-400 fa-mug-hot"></i> 湯品
+                        </span>
+                        
+                        <!-- Lock & Spin Container -->
+                        <div class="relative w-full bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg flex flex-col items-center">
+                            <!-- Reel viewport -->
+                            <div class="w-full h-[120px] overflow-hidden relative select-none" id="reel-viewport-1">
+                                <div class="absolute w-full transition-transform duration-75 ease-out flex flex-col" id="reel-track-1" style="transform: translateY(-120px);">
+                                    <!-- Dynamic elements will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Lock Toggle Pin -->
+                            <button onclick="toggleLock(1)" id="lock-btn-1" class="absolute top-2 right-2 z-20 bg-slate-950/80 hover:bg-slate-950 text-slate-400 border border-slate-700 hover:border-pink-500 p-1.5 rounded-lg text-xs transition duration-200">
+                                <i class="fa-solid fa-lock-open" id="lock-icon-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reel 3: Dessert (甜點) -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest flex items-center gap-1">
+                            <i class="fa-solid text-yellow-400 fa-ice-cream"></i> 甜點
+                        </span>
+                        
+                        <!-- Lock & Spin Container -->
+                        <div class="relative w-full bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-lg flex flex-col items-center">
+                            <!-- Reel viewport -->
+                            <div class="w-full h-[120px] overflow-hidden relative select-none" id="reel-viewport-2">
+                                <div class="absolute w-full transition-transform duration-75 ease-out flex flex-col" id="reel-track-2" style="transform: translateY(-120px);">
+                                    <!-- Dynamic elements will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Lock Toggle Pin -->
+                            <button onclick="toggleLock(2)" id="lock-btn-2" class="absolute top-2 right-2 z-20 bg-slate-950/80 hover:bg-slate-950 text-slate-400 border border-slate-700 hover:border-pink-500 p-1.5 rounded-lg text-xs transition duration-200">
+                                <i class="fa-solid fa-lock-open" id="lock-icon-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Control Deck -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <div class="text-center sm:text-left">
+                        <div class="text-xs text-slate-400">目前鎖定狀態</div>
+                        <div class="text-sm font-bold mt-1 flex gap-2 justify-center sm:justify-start">
+                            <span id="lock-badge-0" class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-xs text-slate-500 transition">主食 🔓</span>
+                            <span id="lock-badge-1" class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-xs text-slate-500 transition">湯品 🔓</span>
+                            <span id="lock-badge-2" class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-xs text-slate-500 transition">甜點 🔓</span>
+                        </div>
+                    </div>
+                    
+                    <!-- SPIN BUTTON -->
+                    <button id="spin-btn" onclick="triggerSpin()" class="relative group overflow-hidden bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-extrabold text-xl py-4 px-10 rounded-2xl shadow-lg shadow-pink-500/20 active:scale-95 transition-all duration-150 flex items-center gap-3">
+                        <span class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-shine"></span>
+                        <i class="fa-solid fa-pizza-slice animate-spin group-hover:scale-125 transition-transform"></i>
+                        吃什麼？
+                    </button>
+                </div>
+
+                <!-- PHYSICAL LEVER (For large screens, absolutely positioned on the right of the machine) -->
+                <div class="hidden md:flex absolute -right-16 top-1/4 h-2/3 flex-col items-center select-none z-30" id="physical-lever">
+                    <!-- Base Pivot Bracket -->
+                    <div class="w-8 h-12 bg-gradient-to-r from-slate-700 to-slate-800 rounded-l border border-slate-600 shadow-md"></div>
+                    <!-- Lever Bar Container -->
+                    <div class="relative flex flex-col items-center" style="margin-top: -12px;">
+                        <!-- Lever Arm (the metal shaft) -->
+                        <div id="lever-arm" class="lever-bar w-3.5 h-32 bg-gradient-to-r from-slate-300 via-slate-400 to-slate-500 rounded-full border border-slate-400/50 shadow-inner" style="transform: rotate(0deg);"></div>
+                        <!-- Ball Handle -->
+                        <div id="lever-ball" onclick="triggerLever()" class="lever-ball absolute -top-8 w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 rounded-full cursor-pointer shadow-lg shadow-pink-500/40 border-2 border-pink-400 flex items-center justify-center transition active:scale-95" style="transform: translateY(0px);">
+                            <span class="text-white text-xs font-bold font-mono">PULL</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Toast / Message Alert Box (Instead of standard alerts) -->
+            <div id="toast-message" class="mt-4 px-6 py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-center font-semibold text-sm opacity-0 pointer-events-none transition-all duration-300 transform translate-y-2 flex items-center gap-2">
+                <i class="fa-solid fa-circle-check"></i>
+                <span id="toast-text">抽選完成！祝您用餐愉快！ 🎉</span>
+            </div>
+
+            <!-- History / Recent Results List -->
+            <div class="w-full max-w-2xl mt-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-lg backdrop-blur-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold tracking-wider text-slate-300 uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-pink-500"></i> 最近抽選紀錄
+                    </h3>
+                    <button onclick="clearHistory()" class="text-xs text-slate-500 hover:text-rose-400 transition">
+                        清除全部
+                    </button>
+                </div>
+                <div id="history-container" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    <!-- Dynamic history items loaded here -->
+                    <p class="text-xs text-slate-500 text-center py-4">目前尚無抽選歷史紀錄 🍽️</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Sidebar: Custom Config Panel -->
+        <div class="lg:col-span-4 w-full flex flex-col gap-6">
+            
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-sliders text-pink-500"></i> 菜單選項管理員
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    預設為特色美食，你可以自由客製化你的口袋名單，每類別各有 5 個選項。
+                </p>
+
+                <!-- Category Tabs for Editing -->
+                <div class="flex border-b border-slate-800 mb-4" role="tablist">
+                    <button onclick="switchTab(0)" id="tab-0" class="flex-1 py-2 text-xs font-bold text-pink-500 border-b-2 border-pink-500 transition">
+                        主食 (0)
+                    </button>
+                    <button onclick="switchTab(1)" id="tab-1" class="flex-1 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition">
+                        湯品 (1)
+                    </button>
+                    <button onclick="switchTab(2)" id="tab-2" class="flex-1 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition">
+                        甜點 (2)
+                    </button>
+                </div>
+
+                <!-- Edit Items Form and List -->
+                <div class="space-y-4">
+                    <!-- Quick Add Item Field -->
+                    <div class="flex gap-2">
+                        <input type="text" id="new-item-input" placeholder="新增自訂美食..." class="flex-grow bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-pink-500 focus:ring-1 focus:ring-pink-500/20 text-sm rounded-xl px-3 py-2 text-slate-200 outline-none transition">
+                        <button onclick="addNewItem()" class="bg-slate-800 hover:bg-pink-500 text-slate-200 hover:text-white px-3 py-2 rounded-xl text-sm transition font-bold">
+                            新增
+                        </button>
+                    </div>
+
+                    <!-- Listed Items for active tab -->
+                    <div class="bg-slate-950 border border-slate-800/60 rounded-xl p-2 max-h-60 overflow-y-auto" id="edit-items-list">
+                        <!-- Dynamic editable items go here -->
+                    </div>
+
+                    <!-- Reset to defaults -->
+                    <div class="pt-2 border-t border-slate-800 flex justify-between">
+                        <button onclick="restoreDefaultLists()" class="text-xs text-amber-500/80 hover:text-amber-400 flex items-center gap-1 transition">
+                            <i class="fa-solid fa-rotate-left"></i> 恢復預設菜單
+                        </button>
+                        <span class="text-[10px] text-slate-500">每組建議至少 3~5 項</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fun Tip Box -->
+            <div class="bg-gradient-to-br from-pink-950/20 to-slate-950 border border-pink-500/10 rounded-2xl p-4">
+                <h4 class="text-xs font-bold text-pink-400 mb-1 flex items-center gap-1">
+                    <i class="fa-regular fa-lightbulb"></i> 玩轉技巧
+                </h4>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    選單項目將會重疊重複填入拉霸滾筒，當您按下「吃什麼」按鈕，滾輪將會伴隨減速進行完美的物理模擬轉動。快設定你今晚想賭一把的美食清單吧！
+                </p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-slate-600 mt-8 w-full border-t border-slate-900 pt-4">
+        <p>© 2026 晚餐隨機生成器 🎰 拒絕每天下班的千古難題！</p>
+    </footer>
+
+    <script>
+        // Web Audio API Sound Effects Synthesizer (No external links)
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Sound 1: Quick retro blip when slot moves
+        function playTickSound() {
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                // Random slightly varied crisp frequency
+                osc.frequency.setValueAtTime(300 + Math.random() * 200, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.05);
+            } catch (e) { /* Audio fallback fail silently */ }
+        }
+
+        // Sound 2: Mechanical double-clack on stopping a reel
+        function playStopSound(isLocked = false) {
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(isLocked ? 100 : 150, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } catch (e) {}
+        }
+
+        // Sound 3: Cheerful win fanfare
+        function playWinFanfare() {
+            try {
+                initAudio();
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50]; // Arpeggio C Major
+                notes.forEach((freq, index) => {
+                    setTimeout(() => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                        
+                        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 0.3);
+                    }, index * 80);
+                });
+            } catch (e) {}
+        }
+
+        // Core Datasets: Standard default arrays (5 elements each)
+        const DEFAULT_LISTS = [
+            // Category 0: 主食 (Main Dish)
+            [
+                { text: "🍛 咖哩飯", raw: "咖哩飯" },
+                { text: "🍜 牛肉麵", raw: "牛肉麵" },
+                { text: "🍚 滷肉飯", raw: "滷肉飯" },
+                { text: "🍕 披薩", raw: "披薩" },
+                { text: "🍣 壽司", raw: "壽司" }
+            ],
+            // Category 1: 湯品 (Soup)
+            [
+                { text: "🍲 貢丸湯", raw: "貢丸湯" },
+                { text: "🥣 味噌湯", raw: "味噌湯" },
+                { text: "🌶️ 酸辣湯", raw: "酸辣湯" },
+                { text: "🌽 玉米濃湯", raw: "玉米濃湯" },
+                { text: "🦪 蛤蜊湯", raw: "蛤蜊湯" }
+            ],
+            // Category 2: 甜點 (Dessert)
+            [
+                { text: "🍧 芒果冰", raw: "芒果冰" },
+                { text: "🍮 烤布蕾", raw: "烤布蕾" },
+                { text: "🧇 雞蛋糕", raw: "雞蛋糕" },
+                { text: "🧋 珍珠奶茶", raw: "珍珠奶茶" },
+                { text: "🍦 霜淇淋", raw: "霜淇淋" }
+            ]
+        ];
+
+        // Active mutable dataset (Loaded from LocalStorage or initialized from defaults)
+        let activeLists = [[], [], []];
+        let lockStates = [false, false, false];
+        let activeTab = 0; // Config sidebar tab selection
+        let isSpinning = false;
+        let lastResult = null;
+
+        // Slot Visual Heights/Sizes
+        const ITEM_HEIGHT = 120; // 120px tall item viewport
+
+        // Initial Setup
+        window.onload = function() {
+            loadListsFromStorage();
+            initializeReels();
+            updateTabBadgeCounts();
+            renderEditItemsList();
+            loadHistory();
+        };
+
+        function loadListsFromStorage() {
+            try {
+                const stored = localStorage.getItem('dinner_randomizer_lists');
+                if (stored) {
+                    activeLists = JSON.parse(stored);
+                } else {
+                    // Deep copy defaults
+                    activeLists = JSON.parse(JSON.stringify(DEFAULT_LISTS));
+                }
+            } catch(e) {
+                activeLists = JSON.parse(JSON.stringify(DEFAULT_LISTS));
+            }
+        }
+
+        function saveListsToStorage() {
+            localStorage.setItem('dinner_randomizer_lists', JSON.stringify(activeLists));
+            updateTabBadgeCounts();
+        }
+
+        // Generate track elements dynamically
+        // To build a smooth continuous wheel scroll, we repeat list elements multiple times in the container track
+        const REEL_REPEATS = 8; // Number of cycles
+
+        function initializeReels() {
+            for (let c = 0; c < 3; c++) {
+                const track = document.getElementById(`reel-track-${c}`);
+                track.innerHTML = '';
+                
+                const list = activeLists[c];
+                
+                // If user leaves active list empty, inject a fallback
+                if (list.length === 0) {
+                    list.push({ text: "❓ 隨便吃", raw: "隨便吃" });
+                }
+
+                // Append multiple copies for infinite scrolling appearance
+                const totalItemsToCreate = list.length * REEL_REPEATS;
+                
+                for (let i = 0; i < totalItemsToCreate; i++) {
+                    const itemData = list[i % list.length];
+                    const itemEl = document.createElement('div');
+                    itemEl.className = "h-[120px] flex items-center justify-center text-center px-4 font-bold text-lg md:text-xl border-b border-slate-900/40 select-none bg-slate-900 transition-colors";
+                    itemEl.innerHTML = `<span class="bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent title-font">${itemData.text}</span>`;
+                    track.appendChild(itemEl);
+                }
+
+                // Position the reel to its first neutral static spot (We center index 1 item of copy #1)
+                track.style.transform = `translateY(-${ITEM_HEIGHT}px)`;
+            }
+        }
+
+        // Lock system
+        function toggleLock(index) {
+            initAudio();
+            if (isSpinning) return; // Cannot lock during spin
+            
+            lockStates[index] = !lockStates[index];
+            
+            const btn = document.getElementById(`lock-btn-${index}`);
+            const icon = document.getElementById(`lock-icon-${index}`);
+            const badge = document.getElementById(`lock-badge-${index}`);
+            const names = ["主食", "湯品", "甜點"];
+            
+            if (lockStates[index]) {
+                btn.classList.add('border-pink-500', 'text-pink-400', 'bg-pink-500/10');
+                btn.classList.remove('border-slate-700', 'text-slate-400', 'bg-slate-950/80');
+                icon.className = "fa-solid fa-lock";
+                badge.className = "px-2 py-0.5 rounded bg-pink-500/10 border border-pink-500/30 text-xs text-pink-400 font-bold";
+                badge.innerText = `${names[index]} 🔒`;
+                playStopSound(true);
+            } else {
+                btn.classList.remove('border-pink-500', 'text-pink-400', 'bg-pink-500/10');
+                btn.classList.add('border-slate-700', 'text-slate-400', 'bg-slate-950/80');
+                icon.className = "fa-solid fa-lock-open";
+                badge.className = "px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-xs text-slate-500";
+                badge.innerText = `${names[index]} 🔓`;
+                playTickSound();
+            }
+        }
+
+        // Animation mechanics
+        // Pulling physical diner lever triggers spin
+        function triggerLever() {
+            if (isSpinning) return;
+            initAudio();
+            
+            const arm = document.getElementById('lever-arm');
+            const ball = document.getElementById('lever-ball');
+            
+            // Physical pull down visual effect
+            arm.style.transform = "rotate(45deg)";
+            ball.style.transform = "translateY(110px)";
+            
+            setTimeout(() => {
+                // Return to normal
+                arm.style.transform = "rotate(0deg)";
+                ball.style.transform = "translateY(0px)";
+                triggerSpin();
+            }, 250);
+        }
+
+        function triggerSpin() {
+            if (isSpinning) return;
+            
+            // Check if everything is locked
+            if (lockStates[0] && lockStates[1] && lockStates[2]) {
+                showToast("您鎖定了所有的滾輪，無法進行隨機抽選哦！ 🚫", "border-amber-500/30 text-amber-400 bg-amber-500/10");
+                return;
+            }
+
+            initAudio();
+            isSpinning = true;
+            document.getElementById('spin-btn').disabled = true;
+            document.getElementById('spin-btn').classList.add('opacity-75');
+            document.getElementById('marquee-text').innerHTML = `<span class="animate-pulse text-pink-400"><i class="fa-solid fa-spinner animate-spin"></i> 廚房大火快炒中...🍽️✨</span>`;
+
+            // Prepare index and track targets
+            const spinPromises = [];
+            const results = [];
+
+            for (let i = 0; i < 3; i++) {
+                if (lockStates[i]) {
+                    // Locked: Keep current selection
+                    results.push(null);
+                    spinPromises.push(Promise.resolve({ locked: true, index: -1 }));
+                } else {
+                    const list = activeLists[i];
+                    const selectedIdx = Math.floor(Math.random() * list.length);
+                    results.push(list[selectedIdx]);
+                    
+                    // We target a spin landing on cycle #5 to make it look full and dynamic
+                    const targetIndexInRepeatedTrack = selectedIdx + (list.length * 5);
+                    const stopPixelOffset = targetIndexInRepeatedTrack * ITEM_HEIGHT;
+                    
+                    // Delay based on index to stop reels sequentially
+                    const stopDelay = 1500 + (i * 700); 
+                    
+                    spinPromises.push(animateReel(i, stopPixelOffset, stopDelay, selectedIdx));
+                }
+            }
+
+            Promise.all(spinPromises).then((spinResults) => {
+                isSpinning = false;
+                document.getElementById('spin-btn').disabled = false;
+                document.getElementById('spin-btn').classList.remove('opacity-75');
+
+                // Combine results (locked ones remain unchanged)
+                const finalCombo = [];
+                for (let i = 0; i < 3; i++) {
+                    if (lockStates[i]) {
+                        // Find current active index shown in track offset
+                        finalCombo.push(getCurrentActiveItemText(i));
+                    } else {
+                        finalCombo.push(activeLists[i][spinResults[i].selectedIdx].text);
+                    }
+                }
+
+                // Sound cue & UI Update
+                playWinFanfare();
+                showToast(`完美組合！今晚吃 ${finalCombo.join(' + ')} 🎉`, "border-emerald-500/30 text-emerald-400 bg-emerald-500/10");
+                
+                // Marquee output
+                document.getElementById('marquee-text').innerHTML = `<span class="neon-text-green font-bold text-emerald-400">🔥 完美套餐已出爐！ ${finalCombo.join(' ＋ ')} 🔥</span>`;
+                
+                // Append to history log
+                saveToHistory(finalCombo);
+            });
+        }
+
+        // Animate individual reel scroll with simulated decay inertia
+        function animateReel(reelIdx, targetOffset, duration, selectedIdx) {
+            return new Promise((resolve) => {
+                const track = document.getElementById(`reel-track-${reelIdx}`);
+                const startTime = performance.now();
+                const startOffset = parseFloat(track.style.transform.replace('translateY(', '').replace('px)', '')) || -120;
+                
+                // Extra full loops during the spin period to speed it up heavily
+                const extraSpinDist = 3000; 
+                const totalDist = targetOffset + extraSpinDist - Math.abs(startOffset);
+
+                let lastTickMilestone = 0;
+
+                function step(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // Quartic Easing Out curve for highly realistic deceleration
+                    const ease = 1 - Math.pow(1 - progress, 4);
+                    const currentPos = startOffset - (totalDist * ease);
+                    
+                    track.style.transform = `translateY(${currentPos}px)`;
+
+                    // Trigger tick audio on passings
+                    const currentPosIntegerAbs = Math.floor(Math.abs(currentPos) / ITEM_HEIGHT);
+                    if (currentPosIntegerAbs > lastTickMilestone) {
+                        playTickSound();
+                        lastTickMilestone = currentPosIntegerAbs;
+                    }
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    } else {
+                        // Snapping precisely on target center
+                        const finalPosition = -(targetOffset);
+                        track.style.transform = `translateY(${finalPosition}px)`;
+                        playStopSound(false);
+                        resolve({ selectedIdx });
+                    }
+                }
+
+                requestAnimationFrame(step);
+            });
+        }
+
+        // Helper to query item currently displayed when a reel is locked
+        function getCurrentActiveItemText(reelIdx) {
+            const track = document.getElementById(`reel-track-${reelIdx}`);
+            const currentTransformY = Math.abs(parseFloat(track.style.transform.replace('translateY(', '').replace('px)', '')));
+            const list = activeLists[reelIdx];
+            const activeIdx = Math.round(currentTransformY / ITEM_HEIGHT) % list.length;
+            return list[activeIdx].text;
+        }
+
+        // Custom Lists Panel Switch Tab
+        function switchTab(tabIdx) {
+            initAudio();
+            activeTab = tabIdx;
+            
+            // Visual Active States
+            for (let i = 0; i < 3; i++) {
+                const tab = document.getElementById(`tab-${i}`);
+                if (i === tabIdx) {
+                    tab.className = "flex-1 py-2 text-xs font-bold text-pink-500 border-b-2 border-pink-500 transition";
+                } else {
+                    tab.className = "flex-1 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition";
+                }
+            }
+            renderEditItemsList();
+            playTickSound();
+        }
+
+        function updateTabBadgeCounts() {
+            document.getElementById('tab-0').innerText = `主食 (${activeLists[0].length})`;
+            document.getElementById('tab-1').innerText = `湯品 (${activeLists[1].length})`;
+            document.getElementById('tab-2').innerText = `甜點 (${activeLists[2].length})`;
+        }
+
+        function renderEditItemsList() {
+            const listContainer = document.getElementById('edit-items-list');
+            listContainer.innerHTML = '';
+            
+            const currentItems = activeLists[activeTab];
+
+            if (currentItems.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">此類別中沒有任何美食 🥢</p>`;
+                return;
+            }
+
+            currentItems.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 hover:bg-slate-900 rounded-lg group transition";
+                div.innerHTML = `
+                    <span class="text-xs font-semibold text-slate-300">${item.text}</span>
+                    <button onclick="deleteItem(${index})" class="text-slate-500 hover:text-rose-500 opacity-0 group-hover:opacity-100 focus:opacity-100 transition p-1">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        function addNewItem() {
+            initAudio();
+            const input = document.getElementById('new-item-input');
+            const val = input.value.trim();
+            
+            if (!val) return;
+
+            // Ensure we keep nice icons or emojis if user doesn't specify
+            const emojiRegex = /^\p{Emoji}/u;
+            let formattedItem = val;
+            if (!emojiRegex.test(val)) {
+                // Prepend category custom emoji helper
+                const defaultEmojis = ["🍱 ", "🍲 ", "🍰 "];
+                formattedItem = defaultEmojis[activeTab] + val;
+            }
+
+            activeLists[activeTab].push({ text: formattedItem, raw: val });
+            input.value = '';
+            
+            saveListsToStorage();
+            initializeReels();
+            renderEditItemsList();
+            playTickSound();
+            showToast("成功加入全新自訂美食！ 👍", "border-pink-500/30 text-pink-400 bg-pink-500/10");
+        }
+
+        function deleteItem(index) {
+            initAudio();
+            if (activeLists[activeTab].length <= 1) {
+                showToast("每個分類至少需要有 1 個項目才能隨機喔！ 🚫", "border-amber-500/30 text-amber-400 bg-amber-500/10");
+                return;
+            }
+
+            activeLists[activeTab].splice(index, 1);
+            saveListsToStorage();
+            initializeReels();
+            renderEditItemsList();
+            playStopSound();
+        }
+
+        function restoreDefaultLists() {
+            initAudio();
+            if (confirm("您確定要恢復成原廠預設的特色美味餐點選單嗎？")) {
+                activeLists = JSON.parse(JSON.stringify(DEFAULT_LISTS));
+                saveListsToStorage();
+                initializeReels();
+                renderEditItemsList();
+                playWinFanfare();
+                showToast("已成功恢復預設主廚菜單！ 🍽️", "border-emerald-500/30 text-emerald-400 bg-emerald-500/10");
+            }
+        }
+
+        // Custom non-blocking message box
+        let toastTimeout;
+        function showToast(message, colorClasses = "border-emerald-500/30 text-emerald-400 bg-emerald-500/10") {
+            const toast = document.getElementById('toast-message');
+            const toastText = document.getElementById('toast-text');
+            
+            // Clean up old classes
+            toast.className = `mt-4 px-6 py-3 border rounded-xl text-center font-semibold text-sm opacity-0 pointer-events-none transition-all duration-300 transform translate-y-2 flex items-center gap-2 ${colorClasses}`;
+            toastText.innerText = message;
+
+            // Trigger animation in
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                // Slide out
+                toast.classList.add('opacity-0', 'translate-y-2');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 4000);
+        }
+
+        // History Log System
+        function saveToHistory(comboArray) {
+            let history = [];
+            try {
+                const stored = localStorage.getItem('dinner_randomizer_history');
+                if (stored) history = JSON.parse(stored);
+            } catch (e) {}
+
+            const record = {
+                timestamp: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                combo: comboArray
+            };
+
+            history.unshift(record); // Prepend to history
+            if (history.length > 10) history.pop(); // Cap history to 10 entries
+
+            localStorage.setItem('dinner_randomizer_history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const container = document.getElementById('history-container');
+            container.innerHTML = '';
+            
+            let history = [];
+            try {
+                const stored = localStorage.getItem('dinner_randomizer_history');
+                if (stored) history = JSON.parse(stored);
+            } catch (e) {}
+
+            if (history.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">目前尚無抽選歷史紀錄 🍽️</p>`;
+                return;
+            }
+
+            history.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "flex items-center justify-between text-xs py-2 px-3 bg-slate-950/60 border border-slate-800/40 rounded-xl";
+                el.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-500 font-mono">[${item.timestamp}]</span>
+                        <span class="text-slate-300 font-medium">${item.combo.join(' ➔ ')}</span>
+                    </div>
+                    <span class="text-[10px] text-pink-400 font-bold bg-pink-500/10 px-1.5 py-0.5 rounded">已送單</span>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function clearHistory() {
+            initAudio();
+            if (confirm("確定要清除所有的美食抽選紀錄嗎？")) {
+                localStorage.removeItem('dinner_randomizer_history');
+                loadHistory();
+                playStopSound();
+            }
+        }
+    </script>
+</body>
+</html>
